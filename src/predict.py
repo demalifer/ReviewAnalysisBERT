@@ -1,15 +1,14 @@
 import torch
 
 from config import *
-from model import ReviewAnalysisModel
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 def predict_batch(model, inputs):
     model.eval()
     with torch.no_grad():
         output = model(**inputs)
-    batch_results = torch.sigmoid(output)
-    return batch_results.tolist()
+    batch_results = torch.softmax(output.logits, dim=-1)
+    return batch_results[:, 1].tolist()
 
 def predict(text, model, tokenizer, device):
 
@@ -28,11 +27,11 @@ def predict(text, model, tokenizer, device):
 
 def run_predict():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    tokenizer = AutoTokenizer.from_pretrained(PRE_TRAINED_DIR/BERT_MODEL)
+    tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL)
     print('vocabulary load success!')
 
-    model = ReviewAnalysisModel().to(device)
-    model.load_state_dict(torch.load(MODEL_DIR / BEST_MODEL))
+    model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL).to(device)
+    model.load_state_dict(torch.load(MODEL_DIR))
     print('model load success!')
 
     print('Welcome to INTELEGER sentiment analysis model! print q or quit to exit...')

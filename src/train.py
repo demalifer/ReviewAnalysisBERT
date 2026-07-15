@@ -44,7 +44,7 @@ def train():
 
         if this_loss < min_loss:
             min_loss = this_loss
-            model.save_pretrained(BERT_MODEL)
+            model.save_pretrained(MODEL_DIR)
             print('The best model has been saved!')
         else:
             print('This model is not the best, and it has not been saved!')
