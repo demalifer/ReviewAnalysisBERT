@@ -1,33 +1,32 @@
-import pandas as pd
-import jieba
-from sklearn.model_selection import train_test_split
-
+from datasets import load_dataset, ClassLabel
+from transformers import AutoTokenizer
 from config import *
-from tokenizer import JiebaTokenizer
 
 def preprocess():
     print('The preprocessing of data is starting...')
 
-    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    dataset = load_dataset('csv', data_files=str(RAW_DATA_DIR/RAW_DATA_FILE))['train']
 
-    df = pd.read_csv(RAW_DATA_DIR/RAW_DATA_FILE, usecols=['label', 'review'], encoding='utf-8')
-    df = df.dropna(subset=['label', 'review']).copy()
-    df['review'] = df['review'].astype(str)
+    dataset = dataset.remove_columns(['cat'])
+    dataset = dataset.filter(lambda x: x['review'] is not None)
+    
+    dataset = dataset.cast_column('label', ClassLabel(names=['n', 'p']))
+    dataset_dict = dataset.train_test_split(test_size=0.2, stratify_by_column='label')
 
-    train_df, test_df = train_test_split(df, test_size=0.2, stratify=df['label'])
-    train_df = train_df.copy()
-    test_df = test_df.copy()
+    tokenizer = AutoTokenizer.from_pretrained(PRE_TRAINED_DIR/BERT_MODEL)
 
-    JiebaTokenizer.build_vocab(train_df['review'].tolist(), MODEL_DIR/VOCAB_FILE)
+    def batch_encode(example):
+        inputs = tokenizer(
+            example['review'],
+            padding='max_length',
+            max_length=128,
+            truncation=True
+        )
+        inputs['label'] = example['label']
+        return inputs
 
-    tokenizer = JiebaTokenizer.from_vocab(MODEL_DIR/VOCAB_FILE)
-
-    train_df['review'] = train_df['review'].apply(lambda x: tokenizer.encode(x, SEQ_LEN))
-    test_df['review'] = test_df['review'].apply(lambda x: tokenizer.encode(x, SEQ_LEN))
-
-    train_df.to_json(PROCESSED_DATA_DIR/TRAIN_DATA_FILE, orient='records', lines=True)
-    test_df.to_json(PROCESSED_DATA_DIR/TEST_DATA_FILE, orient='records', lines=True)
+    dataset_dict = dataset_dict.map(batch_encode, batched=True, remove_columns=['label', 'review'])
+    dataset_dict.save_to_disk(PROCESSED_DATA_DIR)
 
     print('The preprocessing of data is done.')
 
