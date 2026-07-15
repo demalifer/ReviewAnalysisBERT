@@ -2,31 +2,36 @@ import torch
 
 from config import *
 from model import ReviewAnalysisModel
-from tokenizer import JiebaTokenizer
+from transformers import AutoTokenizer
 
 def predict_batch(model, inputs):
     model.eval()
     with torch.no_grad():
-        output = model(inputs)
+        output = model(**inputs)
     batch_results = torch.sigmoid(output)
     return batch_results.tolist()
 
 def predict(text, model, tokenizer, device):
 
-    ids = tokenizer.encode(text, SEQ_LEN)
+    inputs = tokenizer(
+        text,
+        padding='max_length',
+        truncation=True,
+        max_length=SEQ_LEN,
+        return_tensors='pt',
+    )
+    inputs = {k:v.to(device) for k,v in inputs.items()}
 
-    input = torch.tensor([ids], dtype=torch.long).to(device)
-
-    result = predict_batch(model, input)
+    result = predict_batch(model, inputs)
 
     return result[0]
 
 def run_predict():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    tokenizer = JiebaTokenizer.from_vocab(MODEL_DIR/VOCAB_FILE)
+    tokenizer = AutoTokenizer.from_pretrained(PRE_TRAINED_DIR/BERT_MODEL)
     print('vocabulary load success!')
 
-    model = ReviewAnalysisModel(vocab_size=tokenizer.vocab_size, padding_idx=tokenizer.pad_token_id).to(device)
+    model = ReviewAnalysisModel().to(device)
     model.load_state_dict(torch.load(MODEL_DIR / BEST_MODEL))
     print('model load success!')
 
