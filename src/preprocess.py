@@ -22,7 +22,7 @@ def preprocess():
             max_length=128,
             truncation=True
         )
-        inputs['label'] = example['label']
+        inputs['labels'] = example['label']
         return inputs
 
     dataset_dict = dataset_dict.map(batch_encode, batched=True, remove_columns=['label', 'review'])
