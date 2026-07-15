@@ -3,7 +3,6 @@ from config import *
 from model import ReviewAnalysisModel
 from dataset import get_dataloader
 from predict import predict_batch
-from tokenizer import JiebaTokenizer
 from tqdm import tqdm
 
 def evaluate(model, dataloader, device):
@@ -12,10 +11,11 @@ def evaluate(model, dataloader, device):
 
     model.eval()
     with torch.no_grad():
-        for inputs, targets in tqdm(dataloader, desc='Evaluating: '):
-            inputs, targets = inputs.to(device), targets.to(device)
+        for batch in tqdm(dataloader, desc='Evaluating: '):
+            labels = batch.pop('labels').tolist()
+            inputs = {k: v.to(device) for k, v in batch.items()}
             batch_results = predict_batch(model, inputs)
-            for target, result in zip(targets, batch_results):
+            for target, result in zip(labels, batch_results):
                 total_count += 1
                 result = 1 if result > 0.5 else 0
                 if result == target:
@@ -25,10 +25,8 @@ def evaluate(model, dataloader, device):
 
 def run_evaluate():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    tokenizer = JiebaTokenizer.from_vocab(MODEL_DIR/VOCAB_FILE)
-    print('vocabulary load success!')
 
-    model = ReviewAnalysisModel(vocab_size=tokenizer.vocab_size, padding_idx=tokenizer.pad_token_id).to(device)
+    model = ReviewAnalysisModel().to(device)
     model.load_state_dict(torch.load(MODEL_DIR / BEST_MODEL))
     print('model load success!')
 
