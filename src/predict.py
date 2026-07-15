@@ -31,7 +31,6 @@ def run_predict():
     print('vocabulary load success!')
 
     model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL).to(device)
-    model.load_state_dict(torch.load(MODEL_DIR))
     print('model load success!')
 
     print('Welcome to INTELEGER sentiment analysis model! print q or quit to exit...')

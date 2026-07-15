@@ -1,6 +1,6 @@
 import torch
 from config import *
-from model import ReviewAnalysisModel
+from transformers import AutoModelForSequenceClassification
 from dataset import get_dataloader
 from predict import predict_batch
 from tqdm import tqdm
@@ -26,8 +26,7 @@ def evaluate(model, dataloader, device):
 def run_evaluate():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = ReviewAnalysisModel().to(device)
-    model.load_state_dict(torch.load(MODEL_DIR / BEST_MODEL))
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR).to(device)
     print('model load success!')
 
     test_dataloader = get_dataloader(train=False)
