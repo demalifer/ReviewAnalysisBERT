@@ -8,17 +8,16 @@ from model import ReviewAnalysisModel
 
 from torch.utils.tensorboard import SummaryWriter
 import time
-from tokenizer import JiebaTokenizer
 
 def train_one_epoch(model, train_loader, loss , optimizer, device):
     model.train()
 
     total_loss = 0
-    for input, target in tqdm(train_loader, desc='Training'):
-        optimizer.zero_grad()
-        input, target = input.to(device), target.to(device)
-        output = model(input)
-        loss_value = loss(output, target)
+    for batch in tqdm(train_loader, desc='Training'):
+        inputs = {k:v.to(device) for k,v in batch.items()}
+        targets = inputs.pop('labels').to(dtype=torch.float)
+        outputs = model(**inputs)
+        loss_value = loss(outputs, targets)
         loss_value.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -30,9 +29,7 @@ def train():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader = get_dataloader(train=True)
 
-    tokenizer = JiebaTokenizer.from_vocab(MODEL_DIR/VOCAB_FILE)
-
-    model = ReviewAnalysisModel(vocab_size=tokenizer.vocab_size, padding_idx=tokenizer.pad_token_id).to(device)
+    model = ReviewAnalysisModel().to(device)
     loss = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 

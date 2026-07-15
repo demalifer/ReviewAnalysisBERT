@@ -16,7 +16,7 @@ BERT_MODEL = 'bert_base_chinese'
 
 #3. 超参数
 SEQ_LEN = 128
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 EMBEDDING_SIZE = 128
 HIDDEN_SIZE = 768
 
