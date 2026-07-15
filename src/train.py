@@ -4,20 +4,19 @@ from tqdm import tqdm
 
 from config import *
 from dataset import get_dataloader
-from model import ReviewAnalysisModel
+from transformers import AutoModelForSequenceClassification
 
 from torch.utils.tensorboard import SummaryWriter
 import time
 
-def train_one_epoch(model, train_loader, loss , optimizer, device):
+def train_one_epoch(model, train_loader, optimizer, device):
     model.train()
 
     total_loss = 0
     for batch in tqdm(train_loader, desc='Training'):
         inputs = {k:v.to(device) for k,v in batch.items()}
-        targets = inputs.pop('labels').to(dtype=torch.float)
         outputs = model(**inputs)
-        loss_value = loss(outputs, targets)
+        loss_value = outputs.loss
         loss_value.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -29,7 +28,7 @@ def train():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader = get_dataloader(train=True)
 
-    model = ReviewAnalysisModel().to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL).to(device)
     loss = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
@@ -38,14 +37,14 @@ def train():
     min_loss = float('inf')
     for epoch in range(EPOCHS):
         print('='*15, f'EPOCH {epoch+1}', '='*15)
-        this_loss = train_one_epoch(model, train_loader, loss, optimizer, device)
+        this_loss = train_one_epoch(model, train_loader, optimizer, device)
         print('the loss of this epoch is : ', this_loss)
 
         writer.add_scalar('loss', this_loss, epoch + 1)
 
         if this_loss < min_loss:
             min_loss = this_loss
-            torch.save(model.state_dict(), MODEL_DIR / BEST_MODEL)
+            model.save_pretrained(BERT_MODEL)
             print('The best model has been saved!')
         else:
             print('This model is not the best, and it has not been saved!')
